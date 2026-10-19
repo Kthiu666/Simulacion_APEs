@@ -1,0 +1,44 @@
+[
+  {
+    "Escenario": "Escenario 1",
+    "λ": 2.0,
+    "μ": 3.0,
+    "ρ teórica": 0.6667,
+    "L teórica": 2.0,
+    "Lq teórica": 1.3333,
+    "W teórica (t. sistema)": 1.0,
+    "Wq teórica (t. espera)": 0.6667,
+    "Wq simulada (t. espera)": 0.7087,
+    "Lq simulada (cola)": 1.4246,
+    "W simulada (t. sistema)": 1.0418,
+    "Utilización simulada": 0.6696
+  },
+  {
+    "Escenario": "Escenario 2",
+    "λ": 2.5,
+    "μ": 3.0,
+    "ρ teórica": 0.8333,
+    "L teórica": 5.0,
+    "Lq teórica": 4.1667,
+    "W teórica (t. sistema)": 2.0,
+    "Wq teórica (t. espera)": 1.6667,
+    "Wq simulada (t. espera)": 2.0036,
+    "Lq simulada (cola)": 5.0532,
+    "W simulada (t. sistema)": 2.3385,
+    "Utilización simulada": 0.8447
+  },
+  {
+    "Escenario": "Escenario 3",
+    "λ": 2.9,
+    "μ": 3.0,
+    "ρ teórica": 0.9667,
+    "L teórica": 29.0,
+    "Lq teórica": 28.0333,
+    "W teórica (t. sistema)": 10.0,
+    "Wq teórica (t. espera)": 9.6667,
+    "Wq simulada (t. espera)": 6.6322,
+    "Lq simulada (cola)": 19.2317,
+    "W simulada (t. sistema)": 6.9639,
+    "Utilización simulada": 0.962
+  }
+]
