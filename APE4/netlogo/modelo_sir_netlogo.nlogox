@@ -1,0 +1,379 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<model version="NetLogo 7.0.4" snapToGrid="false"><code>extensions [csv]
+
+globals [
+  poblacion beta gamma tiempo-max contactos-activos parametros-activos
+  historial datos-python inicializado? python-cargado? tiempo-motor-ms
+]
+turtles-own [estado siguiente-estado]
+
+to startup
+  inicializar
+end
+
+to escenario-malo
+  fijar-escenario 0.60 0.05 "malo"
+end
+
+to escenario-normal
+  fijar-escenario 0.30 0.10 "normal"
+end
+
+to escenario-favorable
+  fijar-escenario 0.10 0.30 "favorable"
+end
+
+to fijar-escenario [b g nombre]
+  set n-personas 100
+  set infectados-iniciales 5
+  set prob-contagio b
+  set prob-recuperacion g
+  set duracion 100
+  set contactos 1
+  set semilla 42
+  set archivo-python (word "escenarios/" nombre "/resultados_python.csv")
+  inicializar
+end
+
+to-report configuracion-actual
+  report (list n-personas infectados-iniciales prob-contagio prob-recuperacion duracion contactos semilla)
+end
+
+to validar-configuracion [cfg]
+  if length cfg != 7 [error "Se requieren siete parámetros."]
+  foreach cfg [valor -&gt;
+    if not is-number? valor [error "Todos los parámetros deben ser numéricos."]
+  ]
+  foreach [0 1 4 5 6] [indice -&gt;
+    if item indice cfg != floor (item indice cfg) [error "N, infectados, pasos, contactos y semilla deben ser enteros."]
+  ]
+  if item 0 cfg &lt; 2 [error "La población debe ser al menos 2."]
+  if item 1 cfg &lt; 0 or item 1 cfg &gt; item 0 cfg [error "Infectados iniciales debe estar entre 0 y N."]
+  foreach [2 3] [indice -&gt;
+    if item indice cfg &lt; 0 or item indice cfg &gt; 1 [error "Beta y gamma deben estar entre 0 y 1."]
+  ]
+  if item 4 cfg &lt; 0 [error "La duración no puede ser negativa."]
+  if item 5 cfg &lt; 1 or item 5 cfg &gt;= item 0 cfg [error "Los contactos deben estar entre 1 y N - 1."]
+  if item 6 cfg &lt; -2147483648 or item 6 cfg &gt; 2147483647 [error "Semilla fuera del rango de NetLogo."]
+end
+
+to inicializar
+  let cfg configuracion-actual
+  validar-configuracion cfg
+  clear-all
+  set parametros-activos cfg
+  set poblacion item 0 cfg
+  set beta item 2 cfg
+  set gamma item 3 cfg
+  set tiempo-max item 4 cfg
+  set contactos-activos item 5 cfg
+  random-seed item 6 cfg
+  set historial []
+  set datos-python []
+  set inicializado? true
+  set python-cargado? false
+  set tiempo-motor-ms 0
+  if nombre-escenario = "Personalizado" and member? archivo-python
+    ["escenarios/malo/resultados_python.csv" "escenarios/normal/resultados_python.csv" "escenarios/favorable/resultados_python.csv"] [
+    set archivo-python "resultados_python.csv"
+  ]
+  ask patches [set pcolor [247 250 252]]
+  let columnas ceiling sqrt poblacion
+  let filas ceiling (poblacion / columnas)
+  create-turtles poblacion [
+    set estado "S"
+    set siguiente-estado "S"
+    set shape "person"
+    set size min (list 1.7 (20 / sqrt poblacion))
+    set heading 0
+    setxy (min-pxcor + 1.5 + (who mod columnas) * (world-width - 4) / max (list 1 (columnas - 1)))
+          (max-pycor - 1.5 - floor (who / columnas) * (world-height - 4) / max (list 1 (filas - 1)))
+  ]
+  ask n-of (item 1 cfg) turtles [set estado "I" set siguiente-estado "I"]
+  recolorear
+  reset-ticks
+  registrar
+  dibujar-series historial "NetLogo SIR"
+end
+
+to comprobar-configuracion
+  if configuracion-actual != parametros-activos [
+    error "Cambiaste valores. Pausa la ejecución y pulsa REINICIAR / APLICAR antes de continuar."
+  ]
+end
+
+to avanzar
+  if inicializado? != true [inicializar]
+  comprobar-configuracion
+  if ticks &gt;= tiempo-max [stop]
+  paso-modelo
+  dibujar-series historial "NetLogo SIR"
+  if python-cargado? [dibujar-comparaciones]
+end
+
+; Las transiciones consultan el estado anterior. Cada infectado elige k contactos distintos.
+to paso-modelo
+  let inicio timer
+  ask turtles [set siguiente-estado estado]
+  foreach sort turtles with [estado = "I"] [agente -&gt;
+    ask agente [
+      let candidatos range (poblacion - 1)
+      repeat contactos-activos [
+        let posicion random length candidatos
+        let indice item posicion candidatos
+        set candidatos remove-item posicion candidatos
+        if indice &gt;= who [set indice indice + 1]
+        let contacto turtle indice
+        if [estado] of contacto = "S" [
+          if random-float 1 &lt; beta [ask contacto [set siguiente-estado "I"]]
+        ]
+      ]
+      if random-float 1 &lt; gamma [set siguiente-estado "R"]
+    ]
+  ]
+  ask turtles [set estado siguiente-estado]
+  if count turtles != poblacion [error "No se conserva la población."]
+  tick-advance 1
+  registrar
+  set tiempo-motor-ms tiempo-motor-ms + 1000 * (timer - inicio)
+  with-local-randomness [ask turtles [rt (random 61 - 30) fd 0.08]]
+  recolorear
+end
+
+to registrar
+  set historial lput (list ticks (count turtles with [estado = "S"])
+    (count turtles with [estado = "I"]) (count turtles with [estado = "R"])) historial
+end
+
+to recolorear
+  ask turtles [
+    if estado = "S" [set color [34 118 186]]
+    if estado = "I" [set color [209 74 70]]
+    if estado = "R" [set color [39 154 104]]
+  ]
+end
+
+to-report prefijo-archivo
+  let nombre "resultados_python.csv"
+  if not is-string? archivo-python [error "Indica la ruta del CSV Python."]
+  if length archivo-python &lt; length nombre [error "El archivo debe llamarse resultados_python.csv."]
+  let corte length archivo-python - length nombre
+  if substring archivo-python corte length archivo-python != nombre [
+    error "La ruta debe terminar en resultados_python.csv."
+  ]
+  report substring archivo-python 0 corte
+end
+
+to-report leer-configuracion [ruta]
+  if not file-exists? ruta [error (word "Falta " ruta ". Regenera la corrida Python para exportar también sus parámetros.")]
+  let filas csv:from-file ruta
+  if length filas != 2 [error "El archivo de parámetros debe contener encabezado y una fila."]
+  if first filas != ["poblacion" "infectados_iniciales" "beta" "gamma" "pasos" "contactos_por_infectado" "semilla"] [
+    error "Encabezado del archivo de parámetros incorrecto."
+  ]
+  let cfg last filas
+  validar-configuracion cfg
+  report cfg
+end
+
+to cargar-actual
+  set archivo-python "resultados_python.csv"
+  cargar-python
+end
+
+to cargar-python
+  if inicializado? != true [inicializar]
+  comprobar-configuracion
+  let cfg leer-configuracion (word prefijo-archivo "parametros_python.csv")
+  if cfg != parametros-activos [
+    error "Los parámetros del CSV Python no coinciden con esta corrida. Ajusta los controles y reinicia, o regenera Python con esos mismos valores."
+  ]
+  let datos leer-csv archivo-python
+  set datos-python datos
+  set python-cargado? true
+  dibujar-series datos-python "Python SIR"
+  dibujar-comparaciones
+end
+
+to-report leer-csv [ruta]
+  if not file-exists? ruta [error (word "Falta " ruta ". Ejecuta Python o genera los escenarios.")]
+  let filas csv:from-file ruta
+  if empty? filas [error "El CSV está vacío."]
+  if first filas != ["tiempo" "susceptibles" "infectados" "recuperados"] [error "Encabezado CSV incorrecto."]
+  let datos but-first filas
+  if length datos != tiempo-max + 1 [error "El CSV debe contener duración + 1 registros, incluido t=0."]
+  let previo []
+  (foreach datos (range (tiempo-max + 1)) [[fila t] -&gt;
+    if length fila != 4 [error "Cada fila debe contener cuatro columnas."]
+    foreach fila [valor -&gt;
+      if not is-number? valor [error "El CSV solo admite valores numéricos."]
+      if valor &lt; 0 or valor != floor valor [error "El CSV requiere enteros no negativos."]
+    ]
+    if item 0 fila != t [error "Los tiempos deben ser consecutivos desde 0."]
+    if sum but-first fila != poblacion [error "Cada fila debe cumplir S + I + R = población."]
+    if not empty? previo [
+      if item 1 fila &gt; item 1 previo or item 3 fila &lt; item 3 previo [error "S no puede aumentar y R no puede disminuir."]
+    ]
+    set previo fila
+  ])
+  let infectados item 1 parametros-activos
+  if first datos != (list 0 (poblacion - infectados) infectados 0) [error "Condición inicial incompatible con los controles."]
+  report datos
+end
+
+to comparar
+  if inicializado? != true [inicializar]
+  comprobar-configuracion
+  ; Releer para no reutilizar silenciosamente un CSV de otra ruta o regenerado.
+  cargar-python
+  while [ticks &lt; tiempo-max] [paso-modelo]
+  dibujar-series historial "NetLogo SIR"
+  dibujar-comparaciones
+end
+
+to dibujar-series [datos nombre]
+  set-current-plot nombre
+  clear-plot
+  set-plot-x-range 0 max (list 1 tiempo-max)
+  set-plot-y-range 0 poblacion
+  foreach datos [fila -&gt;
+    set-current-plot-pen "S"
+    plotxy item 0 fila item 1 fila
+    set-current-plot-pen "I"
+    plotxy item 0 fila item 2 fila
+    set-current-plot-pen "R"
+    plotxy item 0 fila item 3 fila
+  ]
+end
+
+to dibujar-comparaciones
+  (foreach ["Susceptibles" "Infectados" "Recuperados"] [1 2 3] [[nombre columna] -&gt;
+    set-current-plot nombre
+    clear-plot
+    set-plot-x-range 0 max (list 1 tiempo-max)
+    set-plot-y-range 0 poblacion
+    set-current-plot-pen "NetLogo"
+    foreach historial [fila -&gt; plotxy item 0 fila item columna fila]
+    set-current-plot-pen "Python"
+    foreach datos-python [fila -&gt; plotxy item 0 fila item columna fila]
+  ])
+end
+
+to exportar-netlogo
+  if inicializado? != true [error "Primero pulsa REINICIAR / APLICAR."]
+  comprobar-configuracion
+  if ticks != tiempo-max [error "Completa todos los pasos antes de exportar."]
+  let prefijo prefijo-archivo
+  csv:to-file (word prefijo "resultados_netlogo.csv")
+    fput ["tiempo" "susceptibles" "infectados" "recuperados"] historial
+  csv:to-file (word prefijo "parametros_netlogo.csv")
+    (list ["poblacion" "infectados_iniciales" "beta" "gamma" "pasos" "contactos_por_infectado" "semilla"] parametros-activos)
+end
+
+to-report nombre-escenario
+  if inicializado? != true [report "Sin iniciar"]
+  if parametros-activos = [100 5 0.60 0.05 100 1 42] [report "Malo"]
+  if parametros-activos = [100 5 0.30 0.10 100 1 42] [report "Normal APE"]
+  if parametros-activos = [100 5 0.10 0.30 100 1 42] [report "Favorable"]
+  report "Personalizado"
+end
+
+to-report pico-infectados
+  if inicializado? != true [report 0]
+  report max map [fila -&gt; item 2 fila] historial
+end
+
+to-report tiempo-pico
+  if inicializado? != true [report 0]
+  report item 0 first filter [fila -&gt; item 2 fila = pico-infectados] historial
+end
+</code><widgets><note x="15" y="10" width="1250" height="45" fontSize="21" markdown="false" textColorLight="-1" textColorDark="-1" backgroundLight="-15124661" backgroundDark="-15124661">APE 04  /  SIR  /  EXPLORADOR DE ESCENARIOS</note><note x="15" y="60" width="1250" height="26" fontSize="12" markdown="false" textColorLight="-14535868" textColorDark="-1" backgroundLight="0" backgroundDark="0">Malo: más transmisión y recuperación lenta   |   Normal: guía APE   |   Favorable: menor transmisión y recuperación rápida</note><button x="15" y="95" width="135" height="38" display="MALO" kind="Observer" forever="false" disableUntilTicks="false">escenario-malo</button><button x="160" y="95" width="145" height="38" display="NORMAL APE" kind="Observer" forever="false" disableUntilTicks="false">escenario-normal</button><button x="315" y="95" width="145" height="38" display="FAVORABLE" kind="Observer" forever="false" disableUntilTicks="false">escenario-favorable</button><button x="470" y="95" width="205" height="38" display="REINICIAR / APLICAR" kind="Observer" forever="false" disableUntilTicks="false">inicializar</button><button x="685" y="95" width="115" height="38" display="UN PASO" kind="Observer" forever="false" disableUntilTicks="false">avanzar</button><button x="810" y="95" width="220" height="38" display="EJECUTAR / PAUSAR" kind="Observer" forever="true" disableUntilTicks="false">avanzar</button><button x="1040" y="95" width="225" height="38" display="EXPORTAR NETLOGO" kind="Observer" forever="false" disableUntilTicks="false">exportar-netlogo</button><input x="15" y="140" width="169" height="58" variable="n-personas" type="number" multiline="false">100</input><input x="195" y="140" width="169" height="58" variable="infectados-iniciales" type="number" multiline="false">5</input><input x="375" y="140" width="169" height="58" variable="prob-contagio" type="number" multiline="false">0.3</input><input x="555" y="140" width="169" height="58" variable="prob-recuperacion" type="number" multiline="false">0.1</input><input x="735" y="140" width="169" height="58" variable="duracion" type="number" multiline="false">100</input><input x="915" y="140" width="169" height="58" variable="contactos" type="number" multiline="false">1</input><input x="1095" y="140" width="169" height="58" variable="semilla" type="number" multiline="false">42</input><input x="15" y="205" width="675" height="58" variable="archivo-python" type="string" multiline="false">resultados_python.csv</input><button x="705" y="205" width="170" height="38" display="CARGAR PYTHON" kind="Observer" forever="false" disableUntilTicks="false">cargar-python</button><button x="885" y="205" width="170" height="38" display="CSV ACTUAL" kind="Observer" forever="false" disableUntilTicks="false">cargar-actual</button><button x="1065" y="205" width="200" height="38" display="COMPARAR" kind="Observer" forever="false" disableUntilTicks="false">comparar</button><note x="15" y="270" width="1250" height="27" fontSize="12" markdown="false" textColorLight="-14535868" textColorDark="-1" backgroundLight="0" backgroundDark="0">Tras cambiar valores: pausa y REINICIAR / APLICAR. Para comparar, Python debe tener los mismos siete parámetros.</note><note x="15" y="310" width="350" height="27" fontSize="14" markdown="false" textColorLight="-1" textColorDark="-1" backgroundLight="-15124661" backgroundDark="-15124661">POBLACIÓN NETLOGO</note><view x="40" y="345" width="301" height="247" minPxcor="-16" maxPxcor="16" minPycor="-13" maxPycor="13" patchSize="9.0" wrappingAllowedX="true" wrappingAllowedY="true" showTickCounter="true" tickCounterLabel="Paso" fontSize="12" frameRate="12.0" updateMode="1" /><plot x="380" y="310" width="435" height="285" display="NetLogo SIR" xAxis="Tiempo" yAxis="Personas" xMin="0" xMax="100" yMin="0" yMax="100" autoPlotX="false" autoPlotY="false" legend="true"><setup /><update /><pen display="S" interval="1.0" mode="0" color="-14518636" legend="true"><setup /><update /></pen><pen display="I" interval="1.0" mode="0" color="-3061178" legend="true"><setup /><update /></pen><pen display="R" interval="1.0" mode="0" color="-14198168" legend="true"><setup /><update /></pen></plot><plot x="830" y="310" width="435" height="285" display="Python SIR" xAxis="Tiempo" yAxis="Personas" xMin="0" xMax="100" yMin="0" yMax="100" autoPlotX="false" autoPlotY="false" legend="true"><setup /><update /><pen display="S" interval="1.0" mode="0" color="-14518636" legend="true"><setup /><update /></pen><pen display="I" interval="1.0" mode="0" color="-3061178" legend="true"><setup /><update /></pen><pen display="R" interval="1.0" mode="0" color="-14198168" legend="true"><setup /><update /></pen></plot><monitor x="15" y="608" width="75" height="52" display="S" fontSize="12" precision="0">count turtles with [estado = "S"]</monitor><monitor x="100" y="608" width="75" height="52" display="I" fontSize="12" precision="0">count turtles with [estado = "I"]</monitor><monitor x="185" y="608" width="75" height="52" display="R" fontSize="12" precision="0">count turtles with [estado = "R"]</monitor><monitor x="270" y="608" width="95" height="52" display="Pico I" fontSize="12" precision="0">pico-infectados</monitor><monitor x="380" y="608" width="180" height="52" display="Escenario activo" fontSize="12" precision="0">nombre-escenario</monitor><monitor x="570" y="608" width="125" height="52" display="Paso del pico" fontSize="12" precision="0">tiempo-pico</monitor><monitor x="705" y="608" width="130" height="52" display="Motor (ms)" fontSize="12" precision="0">tiempo-motor-ms</monitor><monitor x="845" y="608" width="140" height="52" display="Filas Python" fontSize="12" precision="0">ifelse-value (python-cargado? = true) [length datos-python] [0]</monitor><note x="1000" y="610" width="265" height="50" fontSize="11" markdown="false" textColorLight="-14535868" textColorDark="-1" backgroundLight="0" backgroundDark="0">S azul · I rojo · R verde
+Contactos sin proximidad espacial.</note><note x="15" y="675" width="1250" height="27" fontSize="14" markdown="false" textColorLight="-1" textColorDark="-1" backgroundLight="-15124661" backgroundDark="-15124661">COMPARACIÓN POR ESTADO  |  Azul: NetLogo  ·  Rojo: Python</note><plot x="15" y="710" width="410" height="225" display="Susceptibles" xAxis="Tiempo" yAxis="Personas" xMin="0" xMax="100" yMin="0" yMax="100" autoPlotX="false" autoPlotY="false" legend="true"><setup /><update /><pen display="NetLogo" interval="1.0" mode="0" color="-14518636" legend="true"><setup /><update /></pen><pen display="Python" interval="1.0" mode="0" color="-2674135" legend="true"><setup /><update /></pen></plot><plot x="435" y="710" width="410" height="225" display="Infectados" xAxis="Tiempo" yAxis="Personas" xMin="0" xMax="100" yMin="0" yMax="100" autoPlotX="false" autoPlotY="false" legend="true"><setup /><update /><pen display="NetLogo" interval="1.0" mode="0" color="-14518636" legend="true"><setup /><update /></pen><pen display="Python" interval="1.0" mode="0" color="-2674135" legend="true"><setup /><update /></pen></plot><plot x="855" y="710" width="410" height="225" display="Recuperados" xAxis="Tiempo" yAxis="Personas" xMin="0" xMax="100" yMin="0" yMax="100" autoPlotX="false" autoPlotY="false" legend="true"><setup /><update /><pen display="NetLogo" interval="1.0" mode="0" color="-14518636" legend="true"><setup /><update /></pen><pen display="Python" interval="1.0" mode="0" color="-2674135" legend="true"><setup /><update /></pen></plot><note x="15" y="945" width="1250" height="26" fontSize="12" markdown="false" textColorLight="-14535868" textColorDark="-1" backgroundLight="0" backgroundDark="0">Cada preset reinicia con semilla 42. Los casos son ilustrativos; FAVORABLE no significa un óptimo matemático. Pausa antes de reiniciar.</note></widgets><info>## USO
+Los botones MALO, NORMAL APE y FAVORABLE fijan los siete parámetros, seleccionan el CSV del escenario y reinician. Pulsa EJECUTAR / PAUSAR o UN PASO para simular. CARGAR PYTHON importa la corrida Python del archivo indicado. COMPARAR completa la corrida NetLogo. EXPORTAR NETLOGO guarda la serie y los parámetros junto al CSV Python seleccionado.
+
+Puedes editar población, infectados iniciales, probabilidad de contagio, probabilidad de recuperación, duración, contactos y semilla. Pausa y pulsa REINICIAR / APLICAR para usarlos; se impide cambiar el modelo a mitad de una corrida. El botón no borra archivos; las exportaciones sí sobrescriben sus propias salidas.
+
+## ESCENARIOS
+Malo: N=100, I0=5, beta=0.60, gamma=0.05, T=100, contactos=1, semilla=42.
+Normal APE: los mismos valores salvo beta=0.30 y gamma=0.10 (guía).
+Favorable: los mismos valores salvo beta=0.10 y gamma=0.30.
+Son casos experimentales; una sola trayectoria no prueba un orden universal ni un óptimo.
+Desde ape4_sir ejecuta python escenarios.py para regenerar los CSV Python de los tres casos y su gráfica comparativa.
+
+## PERSONALIZADO
+Modifica valores y reinicia. Desde ape4_sir ejecuta por ejemplo:
+python main.py --poblacion 200 --infectados 10 --beta 0.2 --gamma 0.15 --pasos 150 --contactos 2 --semilla 7
+Usa esos valores en la interfaz y pulsa CSV ACTUAL para cargar el archivo raíz. Para otra carpeta escribe su ruta terminada en resultados_python.csv en archivo-python. No se infieren parámetros desde la curva: se valida el archivo acompañante parametros_python.csv.
+
+## MODELO
+Cada infectado original elige k contactos distintos, uniformemente entre los demás. Si eran susceptibles, intenta infectarlos con probabilidad beta. Los infectados originales se recuperan con probabilidad gamma. Cambios simultáneos; los recién infectados no actúan en ese paso. No hay reinfección, nacimientos ni muertes. N=S+I+R. Se registra de t=0 hasta la duración, incluso tras la extinción. Las posiciones son decorativas y el movimiento no afecta al generador epidemiológico.
+
+## CSV
+Se mantienen las cuatro columnas exigidas: tiempo,susceptibles,infectados,recuperados.
+Los CSV acompañantes parametros_python.csv y parametros_netlogo.csv contienen N, I0, beta, gamma, duración, contactos y semilla. Solo se comparan series con la misma configuración; los ejes se adaptan a la población y duración.
+
+## NOTAS
+Python y NetLogo no comparten secuencias aleatorias aunque se use la misma semilla numérica.
+Normal APE conserva la configuración de la asignación. Java no forma parte del alcance acordado.
+</info><turtleShapes><shape name="default" rotatable="true" editableColorIndex="0">
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="150" y="5" />
+        <point x="40" y="250" />
+        <point x="150" y="205" />
+        <point x="260" y="250" />
+      </polygon>
+    </shape>
+    <shape name="person" rotatable="false" editableColorIndex="0">
+      <circle x="110" y="5" marked="true" color="-1920102913" diameter="80" filled="true" />
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="105" y="90" />
+        <point x="120" y="195" />
+        <point x="90" y="285" />
+        <point x="105" y="300" />
+        <point x="135" y="300" />
+        <point x="150" y="225" />
+        <point x="165" y="300" />
+        <point x="195" y="300" />
+        <point x="210" y="285" />
+        <point x="180" y="195" />
+        <point x="195" y="90" />
+      </polygon>
+      <rectangle endX="172" startY="79" marked="true" color="-1920102913" endY="94" startX="127" filled="true" />
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="195" y="90" />
+        <point x="240" y="150" />
+        <point x="225" y="180" />
+        <point x="165" y="105" />
+      </polygon>
+      <polygon color="-1920102913" filled="true" marked="true">
+        <point x="105" y="90" />
+        <point x="60" y="150" />
+        <point x="75" y="180" />
+        <point x="135" y="105" />
+      </polygon>
+    </shape>
+    </turtleShapes><linkShapes>
+    <shape name="default" curviness="0.0">
+      <lines>
+        <line x="-0.2" visible="false">
+          <dash value="0.0" />
+          <dash value="1.0" />
+        </line>
+        <line x="0.0" visible="true">
+          <dash value="1.0" />
+          <dash value="0.0" />
+        </line>
+        <line x="0.2" visible="false">
+          <dash value="0.0" />
+          <dash value="1.0" />
+        </line>
+      </lines>
+      <indicator>
+        <shape name="link direction" rotatable="true" editableColorIndex="0">
+          <line endX="90" startY="150" marked="true" color="-1920102913" endY="180" startX="150" />
+          <line endX="210" startY="150" marked="true" color="-1920102913" endY="180" startX="150" />
+        </shape>
+      </indicator>
+    </shape>
+  </linkShapes>
+  <previewCommands>escenario-normal repeat 16 [avanzar]</previewCommands><experiments><experiment name="validacion" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="true" timeLimit="100"><setup>escenario-normal</setup><go>avanzar</go><postRun>cargar-python exportar-netlogo</postRun><metrics><metric>count turtles with [estado = "S"]</metric><metric>count turtles with [estado = "I"]</metric><metric>count turtles with [estado = "R"]</metric><metric>length historial</metric></metrics><subExperiments><subExperiment><enumeratedValueSet variable="semilla"><value value="42" /></enumeratedValueSet></subExperiment></subExperiments></experiment><experiment name="escenario-malo" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="true" timeLimit="100"><setup>escenario-malo</setup><go>avanzar</go><postRun>comparar exportar-netlogo</postRun><metrics><metric>count turtles with [estado = "S"]</metric><metric>count turtles with [estado = "I"]</metric><metric>count turtles with [estado = "R"]</metric><metric>length historial</metric></metrics><subExperiments><subExperiment><enumeratedValueSet variable="semilla"><value value="42" /></enumeratedValueSet></subExperiment></subExperiments></experiment><experiment name="escenario-normal" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="true" timeLimit="100"><setup>escenario-normal</setup><go>avanzar</go><postRun>comparar exportar-netlogo</postRun><metrics><metric>count turtles with [estado = "S"]</metric><metric>count turtles with [estado = "I"]</metric><metric>count turtles with [estado = "R"]</metric><metric>length historial</metric></metrics><subExperiments><subExperiment><enumeratedValueSet variable="semilla"><value value="42" /></enumeratedValueSet></subExperiment></subExperiments></experiment><experiment name="escenario-favorable" repetitions="1" sequentialRunOrder="true" runMetricsEveryStep="true" timeLimit="100"><setup>escenario-favorable</setup><go>avanzar</go><postRun>comparar exportar-netlogo</postRun><metrics><metric>count turtles with [estado = "S"]</metric><metric>count turtles with [estado = "I"]</metric><metric>count turtles with [estado = "R"]</metric><metric>length historial</metric></metrics><subExperiments><subExperiment><enumeratedValueSet variable="semilla"><value value="42" /></enumeratedValueSet></subExperiment></subExperiments></experiment></experiments></model>
