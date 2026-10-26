@@ -1,0 +1,4 @@
+escenario,beta,gamma,pico_infectados,tiempo_pico,susceptibles_finales,infectados_finales,recuperados_finales,personas_infectadas_acumuladas
+malo,0.6,0.05,77,11,0,2,98,100
+normal,0.3,0.1,33,16,10,0,90,90
+favorable,0.1,0.3,5,0,95,0,5,5

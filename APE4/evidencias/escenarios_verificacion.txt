@@ -1,0 +1,24 @@
+Extensión de escenarios SIR — 25 de octubre de 2026
+
+Python: 32 pruebas aprobadas. Se incluyen escenarios, argumentos personalizados,
+probabilidades inválidas, semillas compatibles, lectura de metadatos, conservación,
+rechazo de datos incompatibles y protección del caso base frente a perfiles.
+
+NetLogo 7.0.4: 32 comprobaciones aprobadas en su motor sin interfaz gráfica:
+- Los tres perfiles ejecutan 100 pasos, importan 101 filas y conservan N=100.
+- Los parámetros nativos exportados coinciden con los de Python.
+- La semilla reproduce cada escenario.
+- Se rechaza un CSV con beta distinta aunque comparta condición inicial.
+- Cambiar controles durante la corrida obliga a reiniciar.
+- Se rechazan N<2, infectados>N, contactos>=N, T<0, gamma>1 y semilla decimal.
+- Caso personalizado N=60, I0=4, beta=0.18, gamma=0.2, T=37, k=3,
+  semilla=-7: 38 registros, importación y exportación correctas; ejes adaptados.
+- Caso N=2, I0=0, T=0: una observación, importación y eje temporal válidos.
+- Contactos múltiples no duplican agentes; nuevos infectados no se recuperan
+  ni contagian en el mismo paso. Cero infectados y recuperación total funcionan.
+- Regresión normal NetLogo: pico I=28 en t=17, final S=9,I=0,R=91.
+- Experimento BehaviorSpace validacion completado con 101 observaciones.
+
+El CSV SIR conserva sus cuatro columnas. Los siete parámetros se guardan aparte.
+Los resultados de cada escenario están en netlogo/escenarios/<caso>/.
+El motor y la importación fueron comprobados sin abrir la interfaz gráfica completa.

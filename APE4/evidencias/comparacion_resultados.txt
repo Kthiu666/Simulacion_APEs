@@ -1,0 +1,4 @@
+Herramienta | Pico I | Paso del pico | S final | I final | R final | Extinción
+Python | 33 | 16 | 10 | 0 | 90 | 74
+NetLogo | 28 | 17 | 9 | 0 | 91 | 77
+Gráfica: /home/katty/Documentos/5A/SIMULACION/APE4/ape4_sir/graficas/comparacion_python_netlogo.png

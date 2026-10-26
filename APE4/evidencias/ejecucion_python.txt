@@ -1,0 +1,7 @@
+MODELO SIR - Python + SimPy
+Semilla: 42 | Registros: 101
+Pico de infectados: 33 en t=16
+Final (S, I, R): 10, 0, 90
+Tiempo de simulación computacional: 0.0224 s
+CSV para NetLogo: /home/katty/Documentos/5A/SIMULACION/APE4/ape4_sir/netlogo/resultados_python.csv
+Gráfica: /home/katty/Documentos/5A/SIMULACION/APE4/ape4_sir/graficas/sir_evolucion.png

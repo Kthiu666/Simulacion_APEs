@@ -1,0 +1,41 @@
+herramienta,corrida,milisegundos,alcance
+python,1,4.143178999584052,ejecutar completo
+python,2,4.160808999586152,ejecutar completo
+python,3,4.272944999684114,ejecutar completo
+python,4,4.133505000936566,ejecutar completo
+python,5,4.259130999344052,ejecutar completo
+python,6,4.182993001450086,ejecutar completo
+python,7,4.183799999736948,ejecutar completo
+python,8,4.246767000950058,ejecutar completo
+python,9,4.130676999920979,ejecutar completo
+python,10,4.152526000325452,ejecutar completo
+python,11,4.176907999863033,ejecutar completo
+python,12,4.2593300004227785,ejecutar completo
+python,13,4.1676600012579,ejecutar completo
+python,14,4.170996000539162,ejecutar completo
+python,15,4.267955000614165,ejecutar completo
+python,16,4.238948999045533,ejecutar completo
+python,17,4.263568000169471,ejecutar completo
+python,18,4.2228760012221755,ejecutar completo
+python,19,4.1809379999904195,ejecutar completo
+python,20,4.2406270003993995,ejecutar completo
+netlogo,1,5.000000000000004,transiciones conteo registro
+netlogo,2,4.0000000000000036,transiciones conteo registro
+netlogo,3,5.000000000000004,transiciones conteo registro
+netlogo,4,4.0000000000000036,transiciones conteo registro
+netlogo,5,1.0000000000000009,transiciones conteo registro
+netlogo,6,4.0000000000000036,transiciones conteo registro
+netlogo,7,4.0000000000000036,transiciones conteo registro
+netlogo,8,2.0000000000000018,transiciones conteo registro
+netlogo,9,1.0000000000000009,transiciones conteo registro
+netlogo,10,1.0000000000000009,transiciones conteo registro
+netlogo,11,2.0000000000000018,transiciones conteo registro
+netlogo,12,2.0000000000000018,transiciones conteo registro
+netlogo,13,5.999999999999894,transiciones conteo registro
+netlogo,14,1.0000000000000009,transiciones conteo registro
+netlogo,15,3.0000000000000027,transiciones conteo registro
+netlogo,16,1.0000000000000009,transiciones conteo registro
+netlogo,17,0.0,transiciones conteo registro
+netlogo,18,1.000000000000112,transiciones conteo registro
+netlogo,19,3.0000000000001137,transiciones conteo registro
+netlogo,20,1.000000000000112,transiciones conteo registro

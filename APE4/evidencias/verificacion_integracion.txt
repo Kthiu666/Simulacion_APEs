@@ -1,0 +1,25 @@
+Verificación de integración APE 4
+NetLogo 7.0.4; semilla 42; N=100; I(0)=5; beta=0.30; gamma=0.10; T=100.
+
+Resultado: 20 comprobaciones aprobadas en el motor NetLogo:
+- Carga Python antes de inicializar manualmente: inicializa y lee 101 filas.
+- Condición inicial exacta: [0,95,5,0].
+- Historial de 101 registros y tiempo final 100.
+- Importación completa y estado python-cargado verdadero.
+- Estados pertenecientes a S/I/R.
+- Estado aplicado igual al estado siguiente después del paso.
+- Extinción en la corrida de referencia.
+- Conservación poblacional en todas las filas.
+- Misma semilla reproduce la serie; cargar dos veces no altera el generador nativo.
+- Cero infectados mantiene 100 susceptibles y 101 observaciones.
+- beta=0, gamma=1 recupera los cinco infectados sin contagios.
+- Un recién infectado no se recupera en el mismo paso.
+- Rechazo de ocho entradas inválidas: archivo vacío, encabezado alterado,
+  filas insuficientes, suma distinta de 100, decimales, tiempos alterados,
+  texto donde se espera un número y archivo inexistente.
+
+Python: 17 pruebas unitarias aprobadas (python -m unittest discover -s pruebas -v).
+BehaviorSpace: experimento validacion, 101 observaciones, última fila S=9,I=0,R=91.
+Los archivos validacion_netlogo.csv y ejecucion_python.txt conservan las evidencias.
+La interfaz completa no pudo abrirse en la sesión sin acceso al servidor gráfico.
+La imagen poblacion_netlogo.png es una exportación del motor gráfico en t=16.
